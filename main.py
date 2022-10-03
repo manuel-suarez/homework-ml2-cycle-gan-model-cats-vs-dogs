@@ -19,7 +19,7 @@ dog_files = np.array(glob(os.path.join(DATA_FOLDER, 'dog.*.jpg')))
 cat_files = np.array(glob(os.path.join(DATA_FOLDER, 'cat.*.jpg')))
 
 BUFFER_SIZE = len(dog_files)
-BATCH_SIZE = 10
+BATCH_SIZE = 50
 IMG_WIDTH = 256
 IMG_HEIGHT = 256
 
@@ -290,7 +290,7 @@ terminate = TerminateOnNaN()
 callbacks = [checkpoint, terminate]
 
 # Training
-EPOCHS = 200
+EPOCHS = 50
 
 # Train
 train_dataset = tf.data.Dataset.zip((train_dogs, train_cats))
