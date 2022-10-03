@@ -19,7 +19,7 @@ dog_files = np.array(glob(os.path.join(DATA_FOLDER, 'dog.*.jpg')))
 cat_files = np.array(glob(os.path.join(DATA_FOLDER, 'cat.*.jpg')))
 
 BUFFER_SIZE = len(dog_files)
-BATCH_SIZE = 50
+BATCH_SIZE = 20
 IMG_WIDTH = 256
 IMG_HEIGHT = 256
 
