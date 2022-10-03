@@ -1,6 +1,7 @@
 # Setup the pipeline
+import numpy as np
 import tensorflow as tf
-import tensorflow_datasets as tfds
+from glob import glob
 from tensorflow import keras
 from tensorflow_examples.models.pix2pix import pix2pix
 
@@ -13,16 +14,30 @@ AUTOTUNE = tf.data.AUTOTUNE
 print(tf.__version__)
 
 # Input pipeline
-dataset, metadata = tfds.load('cycle_gan/horse2zebra',
-                              with_info=True, as_supervised=True)
-
-train_horses, train_zebras = dataset['trainA'], dataset['trainB']
-test_horses, test_zebras = dataset['testA'], dataset['testB']
+DATA_FOLDER   = '/home/est_posgrado_manuel.suarez/data/dogs-vs-cats/train'
+dog_files = np.array(glob(os.path.join(DATA_FOLDER, 'dog.*.jpg')))
+cat_files = np.array(glob(os.path.join(DATA_FOLDER, 'cat.*.jpg')))
 
 BUFFER_SIZE = 1000
 BATCH_SIZE = 1
 IMG_WIDTH = 256
 IMG_HEIGHT = 256
+
+n_images        = dog_files.shape[0]
+steps_per_epoch = n_images//BATCH_SIZE
+print('num image files : ', n_images)
+print('steps per epoch : ', steps_per_epoch )
+
+def read_and_decode(file):
+    img = tf.io.read_file(file)
+    img = tf.image.decode_jpeg(img)
+    img = tf.cast(img, tf.float32)
+    # img = img / 255.0
+    # img = tf.image.resize(img, INPUT_DIM[:2], method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+    return img
+
+def load_image(file1):
+    return read_and_decode(file1)
 
 def random_crop(image):
   cropped_image = tf.image.random_crop(
@@ -58,51 +73,52 @@ def preprocess_image_test(image, label):
   image = normalize(image)
   return image
 
-train_horses = train_horses.cache().map(
+# Dataset's configuration
+# train_dataset = tf.data.Dataset.zip((dog_dataset, cat_dataset))
+# train_dataset = train_dataset.shuffle(buffer_size=n_images, reshuffle_each_iteration=True)
+# train_dataset = train_dataset.map(load_image, num_parallel_calls=tf.data.AUTOTUNE)
+# train_dataset = train_dataset.batch(BATCH_SIZE).repeat()
+
+train_dogs = tf.data.Dataset.list_files(dog_files, shuffle=False)
+train_dogs = train_dogs.map(load_image, num_parallel_calls=tf.data.AUTOTUNE)
+train_dogs = train_dogs.cache().map(
     preprocess_image_train, num_parallel_calls=AUTOTUNE).shuffle(
     BUFFER_SIZE).batch(BATCH_SIZE)
 
-train_zebras = train_zebras.cache().map(
+train_cats = tf.data.Dataset.list_files(cat_files, shuffle=False)
+train_cats = train_cats.map(load_image, num_parallel_calls=tf.data.AUTOTUNE)
+train_cats = train_cats.cache().map(
     preprocess_image_train, num_parallel_calls=AUTOTUNE).shuffle(
     BUFFER_SIZE).batch(BATCH_SIZE)
 
-test_horses = test_horses.map(
-    preprocess_image_test, num_parallel_calls=AUTOTUNE).cache().shuffle(
-    BUFFER_SIZE).batch(BATCH_SIZE)
-
-test_zebras = test_zebras.map(
-    preprocess_image_test, num_parallel_calls=AUTOTUNE).cache().shuffle(
-    BUFFER_SIZE).batch(BATCH_SIZE)
-
-sample_horse = next(iter(train_horses))
-sample_zebra = next(iter(train_zebras))
+sample_dog = next(iter(train_dogs))
+sample_cat = next(iter(train_cats))
 
 plt.subplot(121)
-plt.title('Horse')
-plt.imshow(sample_horse[0] * 0.5 + 0.5)
+plt.title('Dog')
+plt.imshow(sample_dog[0] * 0.5 + 0.5)
 
 plt.subplot(122)
-plt.title('Horse with random jitter')
-plt.imshow(random_jitter(sample_horse[0]) * 0.5 + 0.5)
+plt.title('Dog with random jitter')
+plt.imshow(random_jitter(sample_dog[0]) * 0.5 + 0.5)
 
-print("Plotting horse")
+print("Plotting dog")
 plt.savefig('figure_1.png')
 
 plt.subplot(121)
-plt.title('Zebra')
-plt.imshow(sample_zebra[0] * 0.5 + 0.5)
+plt.title('Cat')
+plt.imshow(sample_cat[0] * 0.5 + 0.5)
 
 plt.subplot(122)
-plt.title('Zebra with random jitter')
-plt.imshow(random_jitter(sample_zebra[0]) * 0.5 + 0.5)
+plt.title('Cat with random jitter')
+plt.imshow(random_jitter(sample_cat[0]) * 0.5 + 0.5)
 
-print("Plotting zebra")
+print("Plotting cat")
 plt.savefig('figure_2.png')
 
 # Configure Pix2Pix model
 OUTPUT_CHANNELS = 3
 
-# Loss function
 # Loss Functions
 def discriminator_loss(loss_obj, real, generated):
     real_loss = loss_obj(tf.ones_like(real), real)
@@ -229,13 +245,13 @@ class CycleGAN(keras.Model):
         }
 
 cyclegan = CycleGAN(p_lambda=LAMBDA, summary=True)
-to_zebra = cyclegan.generator_g(sample_horse)
-to_horse = cyclegan.generator_f(sample_zebra)
+to_cat = cyclegan.generator_g(sample_dog)
+to_dog = cyclegan.generator_f(sample_cat)
 plt.figure(figsize=(8, 8))
 contrast = 8
 
-imgs = [sample_horse, to_zebra, sample_zebra, to_horse]
-title = ['Horse', 'To Zebra', 'Zebra', 'To Horse']
+imgs = [sample_dog, to_cat, sample_cat, to_dog]
+title = ['Dog', 'To Cat', 'Cat', 'To Dog']
 
 for i in range(len(imgs)):
   plt.subplot(2, 2, i+1)
@@ -249,12 +265,12 @@ plt.savefig('figure_3.png')
 plt.figure(figsize=(8, 8))
 
 plt.subplot(121)
-plt.title('Is a real zebra?')
-plt.imshow(cyclegan.discriminator_y(sample_zebra)[0, ..., -1], cmap='RdBu_r')
+plt.title('Is a real cat?')
+plt.imshow(cyclegan.discriminator_y(sample_cat)[0, ..., -1], cmap='RdBu_r')
 
 plt.subplot(122)
-plt.title('Is a real horse?')
-plt.imshow(cyclegan.discriminator_x(sample_horse)[0, ..., -1], cmap='RdBu_r')
+plt.title('Is a real dog?')
+plt.imshow(cyclegan.discriminator_x(sample_dog)[0, ..., -1], cmap='RdBu_r')
 
 plt.savefig('figure_4.png')
 print("Model builded")
@@ -276,7 +292,7 @@ callbacks = [checkpoint, terminate]
 EPOCHS = 50
 
 # Train
-train_dataset = tf.data.Dataset.zip((train_horses, train_zebras))
+train_dataset = tf.data.Dataset.zip((train_dogs, train_cat))
 cyclegan.compile()
 cyclegan.fit(train_dataset,
              batch_size      = BATCH_SIZE,
@@ -304,5 +320,5 @@ def generate_images(model, test_input, figname):
     plt.savefig(figname)
 
 # Run the trained model on the test dataset
-for idx, inp in enumerate(test_horses.take(5)):
+for idx, inp in enumerate(train_dogs.take(5)):
   generate_images(cyclegan.generator_g, inp, f"testimage_{idx+1}")
