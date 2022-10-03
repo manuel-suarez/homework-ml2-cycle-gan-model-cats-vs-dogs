@@ -119,6 +119,7 @@ plt.savefig('figure_2.png')
 # Configure Pix2Pix model
 OUTPUT_CHANNELS = 3
 
+# Loss function
 # Loss Functions
 def discriminator_loss(loss_obj, real, generated):
     real_loss = loss_obj(tf.ones_like(real), real)
