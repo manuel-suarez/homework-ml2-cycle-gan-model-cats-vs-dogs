@@ -18,8 +18,8 @@ DATA_FOLDER   = '/home/est_posgrado_manuel.suarez/data/dogs-vs-cats/train'
 dog_files = np.array(glob(os.path.join(DATA_FOLDER, 'dog.*.jpg')))
 cat_files = np.array(glob(os.path.join(DATA_FOLDER, 'cat.*.jpg')))
 
-BUFFER_SIZE = 1000
-BATCH_SIZE = 1
+BUFFER_SIZE = len(dog_files)
+BATCH_SIZE = 10
 IMG_WIDTH = 256
 IMG_HEIGHT = 256
 
@@ -298,8 +298,8 @@ cyclegan.compile()
 cyclegan.fit(train_dataset,
              batch_size      = BATCH_SIZE,
              epochs          = EPOCHS,
-             # initial_epoch   = INITIAL_EPOCH,
-             # steps_per_epoch = steps_per_epoch,
+             initial_epoch   = 0,
+             steps_per_epoch = steps_per_epoch,
              callbacks       = callbacks)
 cyclegan.save_weights("model_vae_faces_1e4.h5")
 
