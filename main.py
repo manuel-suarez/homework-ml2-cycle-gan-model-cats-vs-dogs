@@ -64,12 +64,12 @@ def random_jitter(image):
 
   return image
 
-def preprocess_image_train(image, label):
+def preprocess_image_train(image):
   image = random_jitter(image)
   image = normalize(image)
   return image
 
-def preprocess_image_test(image, label):
+def preprocess_image_test(image):
   image = normalize(image)
   return image
 
